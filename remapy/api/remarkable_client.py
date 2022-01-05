@@ -6,8 +6,8 @@ from uuid import uuid4
 from pathlib import Path
 import json
 
-import utils.config as cfg
-from utils.helper import Singleton
+import remapy.utils.config as cfg
+from remapy.utils.helper import Singleton
 
 #
 # EVENTS

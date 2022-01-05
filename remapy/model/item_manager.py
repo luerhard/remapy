@@ -1,88 +1,84 @@
 import os
 import shutil
-import json 
+import json
 from io import BytesIO
 import zipfile
 from zipfile import ZipFile
 
-from api.remarkable_client import RemarkableClient
-import model.item
-from model.collection import Collection
-from model.document import Document
-from utils.helper import Singleton
-import utils.config
+from remapy.api.remarkable_client import RemarkableClient
+from remapy.model.collection import Collection
+from remapy.model.document import Document
+from remapy import model
+from remapy import utils
+from remapy.utils.helper import Singleton
 
 
 class ItemManager(metaclass=Singleton):
-    """ The ItemManager keeps track of all the collections and documents
-        that are stored in your rm cloud. Load and create items through 
-        this class. It is a singleton such that it is ensured that access to 
-        items goes through the same tree structure.
+    """The ItemManager keeps track of all the collections and documents
+    that are stored in your rm cloud. Load and create items through
+    this class. It is a singleton such that it is ensured that access to
+    items goes through the same tree structure.
     """
-    
 
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
         self.rm_client = RemarkableClient()
         self.root = None
         self.trash = None
 
-
     def get_root(self, force=False):
-        """ Get root node of tree from cache or download it from the rm cloud. 
-            If you are offline, we load the stored tree from last time.
-            Note that if we are online we sync all files with the rm cloud 
-            i.e. delete old local files.
+        """Get root node of tree from cache or download it from the rm cloud.
+        If you are offline, we load the stored tree from last time.
+        Note that if we are online we sync all files with the rm cloud
+        i.e. delete old local files.
         """
         if not self.root is None and not force:
             return self.root
 
         metadata_list, is_online = self._get_metadata_list()
-        
+
         self._clean_local_items(metadata_list)
         self.root, self.trash = self._create_tree(metadata_list)
         return self.root, is_online
 
-
     def get_item(self, id, item=None):
-        """ Get item object for given id. If item metadata is not already
-            downloaded, it is downloaded beforehand.
+        """Get item object for given id. If item metadata is not already
+        downloaded, it is downloaded beforehand.
         """
         self.get_root()
-        
+
         item = self.root if item is None else item
 
         if item.id() == id:
             return item
-        
+
         for child in item.children():
             found = self.get_item(id, child)
             if found != None:
                 return found
-        
-        return None
 
+        return None
 
     def create_backup(self, backup_path):
         # Create folder structure
         self.traverse_tree(
             fun=lambda item: item.create_backup(backup_path),
             document=False,
-            collection=True)
+            collection=True,
+        )
 
         # And copy files into it
         self.traverse_tree(
             fun=lambda item: item.create_backup(backup_path),
             document=True,
-            collection=False)
-    
+            collection=False,
+        )
 
     def upload_file(self, id, parent_id, name, filetype, data, state_listener=None):
         metadata, mf = self._prepare_new_document_zip(
-                id,
-                name, 
-                data,
-                file_type=filetype, 
-                parent_id = parent_id)
+            id, name, data, file_type=filetype, parent_id=parent_id
+        )
 
         # Upload file into cloud
         metadata = self.rm_client.upload(id, metadata, mf)
@@ -98,19 +94,17 @@ class ItemManager(metaclass=Singleton):
         item.sync()
         return item
 
-
     def traverse_tree(self, fun, item=None, document=True, collection=True):
-        """ Traverse item tree (bottom up) and call fun for item depending on 
-            whether document=True and colleciton=True.
+        """Traverse item tree (bottom up) and call fun for item depending on
+        whether document=True and colleciton=True.
         """
         item = self.get_root() if item == None else item
-        
+
         for child in item.children():
             self.traverse_tree(fun, child, document, collection)
-        
+
         if (item.is_document() and document) or (item.is_collection() and collection):
             fun(item)
-
 
     def _create_item(self, metadata, parent):
         if metadata["Type"] == "CollectionType":
@@ -119,13 +113,12 @@ class ItemManager(metaclass=Singleton):
         elif metadata["Type"] == "DocumentType":
             new_object = Document(metadata, parent)
 
-        else: 
+        else:
             raise Exception("Unknown type %s" % metadata["Type"])
-        
+
         parent.add_child(new_object)
         return new_object
 
-        
     def _get_metadata_list(self):
         try:
             metadata_list = self.rm_client.list_items()
@@ -134,21 +127,20 @@ class ItemManager(metaclass=Singleton):
             metadata_list = []
             for local_id in os.listdir(utils.config.PATH):
                 metadata_path = model.item.get_path_metadata_local(local_id)
-                with open(metadata_path, 'r') as file:
-                    metadata_content = file.read().replace('\n', '')
-                
+                with open(metadata_path, "r") as file:
+                    metadata_content = file.read().replace("\n", "")
+
                 metadata = json.loads(metadata_content)
                 metadata_list.append(metadata)
 
         return metadata_list, False
-
 
     def _clean_local_items(self, metadata_list):
         online_ids = [metadata["ID"] for metadata in metadata_list]
         for local_id in os.listdir(utils.config.PATH):
             if local_id in online_ids:
                 continue
-            
+
             local_file_or_folder = "%s/%s" % (utils.config.PATH, local_id)
             if os.path.isfile(local_file_or_folder):
                 os.remove(local_file_or_folder)
@@ -156,12 +148,11 @@ class ItemManager(metaclass=Singleton):
                 shutil.rmtree(local_file_or_folder)
             print("Deleted local item %s" % local_id)
 
-
     def _create_tree(self, metadata_list):
 
-        # Create a dummy root object where everything starts with parent 
-        # "". This parent "" should not be changed as it is also used in 
-        # the rm cloud. Additionally with version 2.2 of the software 
+        # Create a dummy root object where everything starts with parent
+        # "". This parent "" should not be changed as it is also used in
+        # the rm cloud. Additionally with version 2.2 of the software
         # every tablet implicitly includes a trash.
         root = Collection(None, None)
 
@@ -172,26 +163,22 @@ class ItemManager(metaclass=Singleton):
             "Version": 1,
             "Bookmarked": False,
             "Type": "CollectionType",
-            "ModifiedClient": "2000-01-01T00:00:00.000000Z"
+            "ModifiedClient": "2000-01-01T00:00:00.000000Z",
         }
         trash = self._create_item(trash_metadata, root)
         metadata_list.append(trash_metadata)
 
         # We do this for every element, because _create_item_and_parents
         # only ensures that all parents already exist
-        items = {
-            "": root,
-            "trash": trash
-        }
+        items = {"": root, "trash": trash}
         lookup_table = {}
         for i in range(len(metadata_list)):
             lookup_table[metadata_list[i]["ID"]] = i
-        
+
         for i in range(len(metadata_list)):
             self._create_item_and_parents(i, metadata_list, items, lookup_table)
 
         return root, trash
-
 
     def _create_item_and_parents(self, i, metadata_list, items, lookup_table):
         metadata = metadata_list[i]
@@ -206,55 +193,58 @@ class ItemManager(metaclass=Singleton):
                 parent_id = ""
             else:
                 parent_pos = lookup_table[parent_id]
-                self._create_item_and_parents(parent_pos, metadata_list, items, lookup_table)
+                self._create_item_and_parents(
+                    parent_pos, metadata_list, items, lookup_table
+                )
 
         parent = items[parent_id]
         new_object = self._create_item(metadata, parent)
         items[new_object.id()] = new_object
 
-
     def _prepare_new_document_zip(self, id, name, data, file_type, parent_id=""):
 
         # .content file
-        content_file = json.dumps({
-            "dummyDocument": False,
-            "extraMetadata": {
-                "LastBrushColor":           "Black",
-                "LastBrushThicknessScale":  "2",
-                "LastColor":                "Black",
-                "LastEraserThicknessScale": "2",
-                "LastEraserTool":           "Eraser",
-                "LastPen":                  "Finelinerv2",
-                "LastPenColor":             "Black",
-                "LastPenThicknessScale":    "2",
-                "LastPencil":               "SharpPencil",
-                "LastPencilColor":          "Black",
-                "LastPencilThicknessScale": "2",
-                "LastTool":                 "Finelinerv2",
-                "ThicknessScale":           "2",
-                "LastFinelinerv2Size":      "1",
-		    },
-            "fileType": file_type,
-            "pageCount": 0,
-            "pages": [],
-            "fontName": "",
-            "lastOpenedPage": 0,
-            "lineHeight": -1,
-            "margins": 180,
-            "orientation": "portrait",
-            "textScale": 1,
-            "transform": { 
-                "m11": 1,
-                "m12": 0,
-                "m13": 0,
-                "m21": 0,
-                "m22": 1,
-                "m23": 0,
-                "m31": 0,
-                "m32": 0,
-                "m33": 1,
+        content_file = json.dumps(
+            {
+                "dummyDocument": False,
+                "extraMetadata": {
+                    "LastBrushColor": "Black",
+                    "LastBrushThicknessScale": "2",
+                    "LastColor": "Black",
+                    "LastEraserThicknessScale": "2",
+                    "LastEraserTool": "Eraser",
+                    "LastPen": "Finelinerv2",
+                    "LastPenColor": "Black",
+                    "LastPenThicknessScale": "2",
+                    "LastPencil": "SharpPencil",
+                    "LastPencilColor": "Black",
+                    "LastPencilThicknessScale": "2",
+                    "LastTool": "Finelinerv2",
+                    "ThicknessScale": "2",
+                    "LastFinelinerv2Size": "1",
+                },
+                "fileType": file_type,
+                "pageCount": 0,
+                "pages": [],
+                "fontName": "",
+                "lastOpenedPage": 0,
+                "lineHeight": -1,
+                "margins": 180,
+                "orientation": "portrait",
+                "textScale": 1,
+                "transform": {
+                    "m11": 1,
+                    "m12": 0,
+                    "m13": 0,
+                    "m21": 0,
+                    "m22": 1,
+                    "m23": 0,
+                    "m31": 0,
+                    "m32": 0,
+                    "m33": 1,
+                },
             }
-        })
+        )
 
         # metadata
         metadata = {
@@ -276,7 +266,7 @@ class ItemManager(metaclass=Singleton):
 
         mf = BytesIO()
         mf.seek(0)
-        with ZipFile(mf, mode='w', compression=zipfile.ZIP_DEFLATED ) as zf:
+        with ZipFile(mf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("%s.%s" % (id, file_type), data)
             zf.writestr("%s.content" % id, content_file)
             zf.writestr("%s.pagedata" % id, "")
@@ -285,5 +275,3 @@ class ItemManager(metaclass=Singleton):
         #     f.write(mf.getvalue())
         mf.seek(0)
         return metadata, mf
-
-

@@ -1,6 +1,6 @@
 import os
 
-from model.render import notebook
+from remapy.model.render import notebook
 
 INPUT_BASE_PATH = "./testcases/notebook/"
 OUTPUT_BASE_PATH = "./testcases/out/"

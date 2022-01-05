@@ -1,25 +1,19 @@
 import os
-import uuid
 import shutil
 import zipfile
-from zipfile import ZipFile
 from pathlib import Path
-import datetime
 from time import gmtime, strftime
 import json
 
-
-from api.remarkable_client import RemarkableClient
-from utils.helper import Singleton
-import model.render as render
-import model.item
-from model.item import Item
-from model.collection import Collection
-import utils.config as cfg
+from remapy import model
+import remapy.model.render as render
+from remapy.model.item import Item
+from remapy.model.collection import Collection
+import remapy.utils.config as cfg
 
 
 # Document type states
-TYPE_UNKNOWN = 0       # If it is only online we don't know the state
+TYPE_UNKNOWN = 0  # If it is only online we don't know the state
 TYPE_NOTEBOOK = 1
 TYPE_PDF = 2
 TYPE_EPUB = 3
@@ -29,10 +23,8 @@ STATE_NOT_SYNCED = 200
 STATE_OUT_OF_SYNC = 201
 
 
-
 class Document(Item):
-    """ This class represents a rm document i.e. pdf, epub or notebook
-    """
+    """This class represents a rm document i.e. pdf, epub or notebook"""
 
     #
     # CTOR
@@ -55,12 +47,11 @@ class Document(Item):
         # Other props
         self.download_url = None
         self.blob_url = None
-        self.state = None       # Synced, out of sync etc.
-        self.type = None        # Unknown (not downloaded yet), pdf, epub or notebook
+        self.state = None  # Synced, out of sync etc.
+        self.type = None  # Unknown (not downloaded yet), pdf, epub or notebook
 
         # Set correct state of document
         self._update_state()
-
 
     #
     # Getter and setter
@@ -71,18 +62,14 @@ class Document(Item):
     def _get_path_oap_pdf(self):
         return "%s/%s_oap.pdf" % (self.path_remapy, self.name().replace("/", "."))
 
-
     def current_page(self):
         return self._meta_value("CurrentPage", 0) + 1
-
 
     def is_parent_of(self, item):
         return False
 
-
     def full_name(self):
         return "%s/%s" % (self.parent().full_name(), self.name())
-
 
     def ann_or_orig_file(self):
         if os.path.exists(self.path_annotated_pdf):
@@ -90,13 +77,11 @@ class Document(Item):
 
         return self.orig_file()
 
-
     def is_landscape(self):
         with open(self.path_content_file, "r") as f:
             content_file = json.load(f)
             orientation = content_file["orientation"]
         return orientation.lower() == "landscape"
-
 
     def get_pages(self):
         with open(self.path_content_file, "r") as f:
@@ -104,7 +89,6 @@ class Document(Item):
             pages = content_file["pages"]
 
         return pages
-
 
     def rename(self, new_name):
 
@@ -125,10 +109,9 @@ class Document(Item):
         except:
             pass
 
-
     def oap_file(self):
-        """ Returns Only Annotated Pages of the pdf file. For notebooks
-            this is every page...
+        """Returns Only Annotated Pages of the pdf file. For notebooks
+        this is every page...
         """
         # For notebooks this not really exists. Therefore
         # we return the annotated pdf
@@ -140,7 +123,6 @@ class Document(Item):
 
         return None
 
-
     def orig_file(self):
         if self.type == TYPE_EPUB:
             return self.path_original_epub
@@ -148,7 +130,6 @@ class Document(Item):
             return self.path_annotated_pdf
         else:
             return self.path_original_pdf
-
 
     #
     # Functions
@@ -158,7 +139,6 @@ class Document(Item):
             shutil.rmtree(self.path)
         self._update_state()
 
-
     def delete(self):
         ok = self.rm_client.delete_item(self.id(), self.version())
 
@@ -166,7 +146,6 @@ class Document(Item):
             self.state = model.item.STATE_DELETED
             self._update_state_listener()
         return ok
-
 
     def sync(self):
         if self.state == model.item.STATE_SYNCING:
@@ -187,7 +166,8 @@ class Document(Item):
                 self.id(),
                 self.path_annotated_pdf,
                 self.is_landscape(),
-                path_templates=cfg.get("general.templates"))
+                path_templates=cfg.get("general.templates"),
+            )
 
         else:
             if annotations_exist:
@@ -199,11 +179,11 @@ class Document(Item):
                     self.get_pages(),
                     self.path_original_pdf,
                     self.path_annotated_pdf,
-                    self.path_oap_pdf)
+                    self.path_oap_pdf,
+                )
 
         self._update_state()
         self.parent().sync()
-
 
     def _download_raw(self, path=None):
         path = self.path if path == None else path
@@ -226,10 +206,8 @@ class Document(Item):
         # Update state
         self._update_state(inform_listener=False)
 
-
     def update_state(self):
         self._update_state(inform_listener=True)
-
 
     def _update_state(self, inform_listener=True):
 
@@ -240,10 +218,14 @@ class Document(Item):
 
         # If synced get file type
         else:
-            with open(self.path_metadata_local, encoding='utf-8') as f:
+            with open(self.path_metadata_local, encoding="utf-8") as f:
                 local_metadata = json.loads(f.read())
 
-            self.state = model.item.STATE_SYNCED if local_metadata["Version"] == self.version() else STATE_OUT_OF_SYNC
+            self.state = (
+                model.item.STATE_SYNCED
+                if local_metadata["Version"] == self.version()
+                else STATE_OUT_OF_SYNC
+            )
             is_epub = os.path.exists(self.path_original_epub)
             is_pdf = not is_epub and os.path.exists(self.path_original_pdf)
 
@@ -259,7 +241,6 @@ class Document(Item):
             return
 
         self._update_state_listener()
-
 
     def create_backup(self, backup_path):
 

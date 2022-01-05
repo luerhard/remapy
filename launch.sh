@@ -12,4 +12,4 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
 echo "remapy ROOT: $DIR"
 cd $DIR
 source env/bin/activate
-./rema.py
+./remapy/rema.py

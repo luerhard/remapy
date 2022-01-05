@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from model.render import pdf
+from remapy.model.render import pdf
 
 INPUT_BASE_PATH = Path("testcases/annotation/")
 OUTPUT_BASE_PATH = Path("testcases/out/")

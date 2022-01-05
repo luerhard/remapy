@@ -3,8 +3,8 @@ import time
 from pathlib import Path
 import json
 
-from api.remarkable_client import RemarkableClient
-import utils.config
+from remapy.api.remarkable_client import RemarkableClient
+from remapy import utils
 
 
 #

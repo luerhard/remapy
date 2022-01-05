@@ -7,16 +7,16 @@ from tkinter import *
 from tkinter import scrolledtext
 import tkinter.ttk as ttk
 
-from gui.file_explorer import FileExplorer
-from gui.about import About
-from gui.settings import Settings
+from remapy.gui.file_explorer import FileExplorer
+from remapy.gui.about import About
+from remapy.gui.settings import Settings
 
-import api.remarkable_client
-from api.remarkable_client import RemarkableClient
-import utils.config
+from remapy import api
+from remapy.api.remarkable_client import RemarkableClient
+from remapy import utils
+
 
 class Main(object):
-
     def __init__(self, window):
         self.rm_client = RemarkableClient()
 
@@ -33,7 +33,7 @@ class Main(object):
         window.title("RemaPy Explorer")
 
         # Try to start remapy always on the first screen and in the middle.
-        # We assume a resolution width of 1920... if 1920 is too large use 
+        # We assume a resolution width of 1920... if 1920 is too large use
         # the real resolution
         x = min(window.winfo_screenwidth(), 1920) / 2 - (window_width / 2)
         y = (window.winfo_screenheight() / 2) - (window_height / 2)
@@ -44,7 +44,9 @@ class Main(object):
         self.notebook.pack(expand=1, fill="both")
 
         frame = ttk.Frame(self.notebook)
-        self.file_explorer = FileExplorer(frame, window, font_size=font_size, row_height=row_height)
+        self.file_explorer = FileExplorer(
+            frame, window, font_size=font_size, row_height=row_height
+        )
         self.notebook.add(frame, text="File Explorer")
 
         frame = ttk.Frame(self.notebook)
@@ -62,25 +64,27 @@ class Main(object):
         frame = ttk.Frame(self.notebook)
         self.settings = Settings(frame, font_size)
         self.notebook.add(frame, text="Settings")
-        
+
         frame = ttk.Frame(self.notebook)
         self.about = About(frame)
         self.notebook.add(frame, text="About")
 
-        # Try to sign in to the rm cloud without a onetime code i.e. we 
-        # assume that the user token is already available. If it is not 
+        # Try to sign in to the rm cloud without a onetime code i.e. we
+        # assume that the user token is already available. If it is not
         # possible we get a signal to disable "My remarkable" and settings
         # are shown...
         self.rm_client.sign_in()
-        
 
     #
     # EVENT HANDLER
     #
     def sign_in_event_handler(self, event, data):
-        # If we fail to get a user token, we are e.g. offline. So we continue 
+        # If we fail to get a user token, we are e.g. offline. So we continue
         # and try if we can get it later; otherwise we go into an offline mode
-        if event == api.remarkable_client.EVENT_SUCCESS or event == api.remarkable_client.EVENT_USER_TOKEN_FAILED:
+        if (
+            event == api.remarkable_client.EVENT_SUCCESS
+            or event == api.remarkable_client.EVENT_USER_TOKEN_FAILED
+        ):
             self.notebook.tab(0, state="normal")
         else:
             self.notebook.tab(0, state="disabled")
@@ -96,5 +100,5 @@ def main():
     window.mainloop()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

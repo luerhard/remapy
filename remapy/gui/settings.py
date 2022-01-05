@@ -7,10 +7,10 @@ from tkinter import messagebox
 import threading
 from pathlib import Path
 
-import api.remarkable_client
-from api.remarkable_client import RemarkableClient
-import utils.config as cfg
-from model.item_manager import ItemManager
+from remapy import api
+from remapy.api.remarkable_client import RemarkableClient
+import remapy.utils.config as cfg
+from remapy.model.item_manager import ItemManager
 
 class Settings(object):
     def __init__(self, root, font_size):

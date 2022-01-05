@@ -13,7 +13,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/peerdavid/remapy",
     author="David Peer",
-    packages=find_packages(where="."),
+    packages=find_packages("."),
     python_requires=">=3.6, <4",
     install_requires=[
         "numpy",
@@ -24,11 +24,11 @@ setup(
         "requests",
     ],
     package_data={
-        "gui": ["icons/*.png"],
+        "remapy": ["gui/icons/*.png"],
     },
     entry_points={
         "gui_scripts": [
-            "remapy=rema:main",
+            "remapy=remapy.rema:main",
         ],
     },
     project_urls={

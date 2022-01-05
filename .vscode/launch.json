@@ -8,7 +8,7 @@
             "name": "rema.py",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceRoot}/rema.py",
+            "program": "${workspaceRoot}/remapy/rema.py",
             "console": "integratedTerminal"
         }
     ]

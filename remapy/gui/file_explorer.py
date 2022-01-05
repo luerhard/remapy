@@ -18,14 +18,12 @@ from tkinter import simpledialog
 from PIL import ImageTk as itk
 from PIL import Image
 
-from gui.elements.entry_with_placeholder import EntryWithPlaceholder
-import api.remarkable_client
-from api.remarkable_client import RemarkableClient
-from model.item_manager import ItemManager
-from model.item import Item
-import model.document
-from model.document import Document
-import utils.config
+from remapy import api
+from remapy.api.remarkable_client import RemarkableClient
+from remapy.gui.elements.entry_with_placeholder import EntryWithPlaceholder
+from remapy import model
+from remapy.model.item_manager import ItemManager
+from remapy import utils
 
 
 class FileExplorer(object):

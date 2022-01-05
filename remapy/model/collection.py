@@ -1,6 +1,6 @@
 import numpy as np
-import model.item
-from model.item import Item
+from remapy import model
+from remapy.model.item import Item
 from pathlib import Path
 
 
